@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="scroll pt">
+  <h1>Enhancement</h1>
+  <div class="sub">Cycles & calendrier injections</div>
+
+  {% if active %}
+  <div class="card" style="border-color:var(--purple);background:#12091e;margin-bottom:16px;">
+    <div style="font-size:10px;color:var(--purple);letter-spacing:3px;margin-bottom:6px;font-weight:700;">CYCLE ACTIF</div>
+    <div style="font-size:18px;font-weight:900;">{{ active.products|map(attribute='name')|join(' + ') }}</div>
+    <div style="font-size:12px;color:var(--t3);margin-top:4px;">Démarré {{ active.start_date_fr }} · {{ active.weeks }} semaines</div>
+
+    {% if next_inj %}
+    <div style="margin-top:10px;padding:10px 12px;background:{{ '#1a0800' if next_inj.is_today else '#0a0a1a' }};border-radius:8px;border:1px solid {{ 'var(--acc)' if next_inj.is_today else 'var(--border)' }};display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:{{ 'var(--acc)' if next_inj.is_today else 'var(--t3)' }};font-weight:{{ '700' if next_inj.is_today else '400' }};">
+        {% if next_inj.is_today %}💉 INJECTION AUJOURD'HUI{% else %}Prochaine : {{ next_inj.date_fr }}{% endif %}
+      </span>
+      {% if next_inj.is_today %}
+      <a href="{{ url_for('enh_mark_done', cycle_id=active.id, inj_id=next_inj.id) }}" style="padding:5px 12px;background:var(--purple);border-radius:6px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">FAIT ✓</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('enh_detail', cycle_id=active.id) }}" class="btn purple" style="margin-top:12px;margin-bottom:0;">CALENDRIER ›</a>
+  </div>
+  {% endif %}
+
+  <a href="{{ url_for('enh_create') }}" class="btn purple">+ NOUVEAU CYCLE</a>
+
+  {% for c in others %}
+  <div class="csm">
+    <div style="font-weight:700;font-size:14px;">{{ c.products|map(attribute='name')|join(' + ') }}</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:3px;">{{ c.start_date_fr }} · {{ c.weeks }} semaines</div>
+  </div>
+  {% endfor %}
+
+  <a href="{{ url_for('enh_lock') }}" class="btn ghost">🔒 Verrouiller</a>
+</div>
+{% endblock %}

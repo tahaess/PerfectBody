@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pinwrap pt">
+  <div style="font-size:36px;">🧬</div>
+  <div style="font-size:22px;font-weight:900;">Enhancement</div>
+  <div style="font-size:13px;color:var(--t3);">Entrez votre PIN</div>
+  {% if error %}<div style="color:var(--red);font-size:13px;">{{ error }}</div>{% endif %}
+  <form method="POST" action="{{ url_for('enh_unlock') }}" id="pinForm">
+    <input type="hidden" name="pin" id="pinValue">
+    <div class="pdots" id="dots">
+      <div class="pdot"></div><div class="pdot"></div><div class="pdot"></div><div class="pdot"></div>
+    </div>
+    <div class="ppad">
+      {% for k in ['1','2','3','4','5','6','7','8','9','','0','⌫'] %}
+        {% if k %}
+        <button type="button" class="pkey" onclick="press('{{ k }}')">{{ k }}</button>
+        {% else %}
+        <div></div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </form>
+</div>
+<script>
+var pin = '';
+var dots = document.querySelectorAll('.pdot');
+function press(k){
+  if(k === '⌫'){ pin = pin.slice(0,-1); }
+  else if(pin.length < 4){ pin += k; }
+  dots.forEach(function(d,i){ d.className = 'pdot' + (i < pin.length ? ' fill' : ''); });
+  if(pin.length === 4){
+    document.getElementById('pinValue').value = pin;
+    document.getElementById('pinForm').submit();
+  }
+}
+</script>
+{% endblock %}

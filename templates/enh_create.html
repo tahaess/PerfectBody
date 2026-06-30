@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lhdr">
+  <div class="hdr-row">
+    <a href="{{ url_for('enhancement_home') }}" class="back">←</a>
+    <div>
+      <div style="font-size:10px;color:var(--acc);letter-spacing:3px;font-weight:700;">ENHANCEMENT</div>
+      <div style="font-size:22px;font-weight:900;">Nouveau cycle</div>
+    </div>
+  </div>
+</div>
+<div class="scroll" style="padding-top:16px;">
+  <form method="POST" id="enhForm">
+    <div class="sec">PRODUITS</div>
+    <div id="productsContainer"></div>
+    <button type="button" onclick="addProduct()" style="width:100%;padding:10px;background:none;border:1px dashed var(--border);border-radius:10px;color:var(--t3);font-family:inherit;font-size:12px;cursor:pointer;margin-bottom:16px;">+ Ajouter un produit</button>
+
+    <div class="sec">DURÉE ET DATE</div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <label class="lbl">SEMAINES</label>
+        <input class="inp" type="number" name="weeks" value="12" style="margin-bottom:0;">
+      </div>
+      <div style="flex:1;">
+        <label class="lbl">DATE DÉBUT</label>
+        <input class="inp" type="date" name="start_date" value="{{ today }}" style="margin-bottom:0;">
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:12px;">JOURS D'INJECTION</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      {% for d, label in [(0,'Lun'),(1,'Mar'),(2,'Mer'),(3,'Jeu'),(4,'Ven'),(5,'Sam'),(6,'Dim')] %}
+      <label style="padding:8px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);font-size:13px;color:var(--t2);cursor:pointer;">
+        <input type="checkbox" name="freq_days" value="{{ d }}" style="display:none;" onchange="this.parentElement.style.background = this.checked ? 'var(--purple)' : 'var(--bg2)'; this.parentElement.style.color = this.checked ? '#fff' : 'var(--t2)'; this.parentElement.style.fontWeight = this.checked ? '700' : '400';">
+        {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <input type="hidden" name="products_json" id="productsJson">
+    <button type="submit" class="btn purple">CRÉER LE CYCLE</button>
+  </form>
+</div>
+
+<script>
+var products = [{name:'', dose:'', unit:'mg', form:'injection'}];
+
+function addProduct(){
+  products.push({name:'', dose:'', unit:'mg', form:'injection'});
+  renderProducts();
+}
+function removeProduct(idx){
+  products.splice(idx, 1);
+  renderProducts();
+}
+function updateProduct(idx, field, val){
+  products[idx][field] = val;
+}
+function setForm(idx, f){
+  products[idx].form = f;
+  renderProducts();
+}
+
+function renderProducts(){
+  var c = document.getElementById('productsContainer');
+  c.innerHTML = '';
+  products.forEach(function(p, idx){
+    var pc = document.createElement('div');
+    pc.style.cssText = 'background:#0a0a14;border-radius:12px;padding:12px;margin-bottom:10px;';
+
+    var r1 = document.createElement('div');
+    r1.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
+    var ni = document.createElement('input');
+    ni.placeholder = 'Produit'; ni.value = p.name;
+    ni.style.cssText = 'flex:2;background:#111;border:1px solid #1e1e2e;border-radius:10px;padding:12px;color:#f0f0f8;font-family:inherit;';
+    ni.oninput = function(){ updateProduct(idx, 'name', this.value); };
+    var di = document.createElement('input');
+    di.placeholder = 'Dose'; di.value = p.dose;
+    di.style.cssText = 'flex:1;background:#111;border:1px solid #1e1e2e;border-radius:10px;padding:12px;color:#f0f0f8;font-family:inherit;';
+    di.oninput = function(){ updateProduct(idx, 'dose', this.value); };
+    var us = document.createElement('select');
+    us.style.cssText = 'background:#111;border:1px solid #1e1e2e;border-radius:10px;padding:12px 6px;color:#f0f0f8;font-family:inherit;flex:1;';
+    ['mg','mcg','UI'].forEach(function(u){
+      var o = document.createElement('option'); o.value=u; o.textContent=u;
+      if(p.unit===u) o.selected=true;
+      us.appendChild(o);
+    });
+    us.onchange = function(){ updateProduct(idx, 'unit', this.value); };
+    r1.appendChild(ni); r1.appendChild(di); r1.appendChild(us);
+    pc.appendChild(r1);
+
+    var fr = document.createElement('div');
+    fr.style.cssText = 'display:flex;gap:6px;';
+    ['injection','oral','autre'].forEach(function(f){
+      var fb = document.createElement('button');
+      fb.type = 'button';
+      fb.textContent = f.charAt(0).toUpperCase()+f.slice(1);
+      var active = p.form === f;
+      fb.style.cssText = 'flex:1;padding:8px;border-radius:8px;font-family:inherit;font-size:11px;cursor:pointer;font-weight:700;background:' + (active?'#a855f7':'#1a1a28') + ';border:1px solid ' + (active?'#a855f7':'#1e1e2e') + ';color:' + (active?'#fff':'#888') + ';';
+      fb.onclick = function(){ setForm(idx, f); };
+      fr.appendChild(fb);
+    });
+    pc.appendChild(fr);
+    c.appendChild(pc);
+  });
+}
+
+document.getElementById('enhForm').addEventListener('submit', function(){
+  document.getElementById('productsJson').value = JSON.stringify(products);
+});
+
+renderProducts();
+</script>
+{% endblock %}

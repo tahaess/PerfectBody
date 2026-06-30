@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="scroll pt">
+  <h1>Stats</h1>
+  <div class="sub">Vue d'ensemble</div>
+  <div class="sgrid">
+    <div class="sbox"><div class="sv">{{ total_sessions }}</div><div class="sl">SÉANCES</div></div>
+    <div class="sbox"><div class="sv">{{ total_volume }}t</div><div class="sl">VOLUME</div></div>
+    <div class="sbox"><div class="sv">{{ prs|length }}</div><div class="sl">PRS</div></div>
+  </div>
+  <div class="card">
+    <div class="sec">🏆 RECORDS PERSO</div>
+    {% if not prs %}
+      <div style="color:var(--t3);text-align:center;padding:16px 0;">Aucun PR encore</div>
+    {% endif %}
+    {% for ex, rm in prs %}
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #111;">
+      <div style="font-size:13px;color:#ccc;flex:1;margin-right:8px;line-height:1.3;">{{ ex }}</div>
+      <div style="color:var(--acc);font-weight:900;font-size:16px;flex-shrink:0;">{{ rm }}kg</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if chart_data %}
+  <div class="card">
+    <div class="sec">VOLUME PAR SÉANCE</div>
+    <div style="display:flex;align-items:flex-end;gap:4px;height:90px;margin-top:8px;">
+      {% for date, vol, height in chart_data %}
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:100%;background:var(--acc);border-radius:4px 4px 0 0;opacity:.85;min-height:4px;height:{{ height }}px;"></div>
+        <div style="font-size:9px;color:var(--t3);text-align:center;">{{ date }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

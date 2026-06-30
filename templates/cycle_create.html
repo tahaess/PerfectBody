@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lhdr">
+  <div class="hdr-row">
+    <a href="{{ url_for('cycle_home') }}" class="back">←</a>
+    <div>
+      <div style="font-size:10px;color:#555;letter-spacing:3px;font-weight:700;">CYCLE</div>
+      <div style="font-size:22px;font-weight:900;">Nouveau cycle</div>
+    </div>
+  </div>
+</div>
+<div class="scroll" style="padding-top:16px;">
+  <form method="POST" id="cycForm">
+    <label class="lbl">NOM DU CYCLE</label>
+    <input class="inp" name="name" placeholder="Ex: Force Automne 2026" required>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px;">
+      <div class="sec" style="margin-bottom:0;">SÉANCES</div>
+      <button type="button" onclick="addSession()" style="background:var(--bg3);border:1px solid var(--border);color:var(--t2);border-radius:8px;padding:6px 12px;font-family:inherit;font-size:12px;cursor:pointer;">+ Séance</button>
+    </div>
+
+    <div id="sessionsContainer"></div>
+
+    <input type="hidden" name="sessions_json" id="sessionsJson">
+    <button type="submit" class="btn blue" style="margin-top:8px;">CRÉER LE CYCLE</button>
+  </form>
+</div>
+
+<script>
+var EXO_DATA = {{ exo|tojson }};
+var sessions = [];
+
+function addSession(){
+  var letter = String.fromCharCode(65 + sessions.length);
+  sessions.push({name: 'Séance ' + letter, exos: []});
+  renderSessions();
+}
+
+function removeSession(idx){
+  sessions.splice(idx, 1);
+  renderSessions();
+}
+
+function renameSession(idx, val){
+  sessions[idx].name = val;
+}
+
+function removeExo(sIdx, eIdx){
+  sessions[sIdx].exos.splice(eIdx, 1);
+  renderSessions();
+}
+
+function updateExo(sIdx, eIdx, field, val){
+  sessions[sIdx].exos[eIdx][field] = parseInt(val) || (field === 'sets' ? 3 : field === 'reps' ? 10 : 90);
+}
+
+var pickerState = {sIdx: null, muscle: null};
+
+function openPicker(sIdx){
+  pickerState.sIdx = sIdx;
+  pickerState.muscle = null;
+  renderPickerModal();
+}
+
+function renderPickerModal(){
+  var modal = document.getElementById('pickerModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'pickerModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:#080810;z-index:200;display:flex;flex-direction:column;';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '';
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:calc(env(safe-area-inset-top,20px) + 28px) 16px 14px;border-bottom:1px solid #111;display:flex;gap:12px;align-items:center;';
+  var back = document.createElement('button');
+  back.textContent = '←';
+  back.style.cssText = 'background:#151520;border:1px solid #1e1e2e;color:#888;border-radius:10px;padding:10px 14px;font-size:18px;cursor:pointer;';
+  back.onclick = function(){
+    if(pickerState.muscle){ pickerState.muscle = null; renderPickerModal(); }
+    else { document.body.removeChild(modal); }
+  };
+  hdr.appendChild(back);
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:20px;font-weight:900;color:#f0f0f8;';
+  title.textContent = pickerState.muscle ? pickerState.muscle.label : 'Quel muscle ?';
+  hdr.appendChild(title);
+  modal.appendChild(hdr);
+
+  var scroll = document.createElement('div');
+  scroll.style.cssText = 'flex:1;overflow-y:auto;padding:16px;';
+
+  if(!pickerState.muscle){
+    var muscles = {{ muscles|tojson }};
+    muscles.forEach(function(m){
+      var b = mkPickerBtn(m.emoji + ' ' + m.label, (EXO_DATA[m.id]||[]).length + ' exos');
+      b.onclick = function(){ pickerState.muscle = m; renderPickerModal(); };
+      scroll.appendChild(b);
+    });
+  } else {
+    var exos = EXO_DATA[pickerState.muscle.id] || [];
+    exos.forEach(function(ex){
+      ex.v.forEach(function(variant){
+        var b = mkPickerBtn(ex.n + ' — ' + variant, '');
+        b.onclick = function(){
+          sessions[pickerState.sIdx].exos.push({name: ex.n + ' — ' + variant, sets: 3, reps: 10, rest: 90, dw: 60});
+          document.body.removeChild(modal);
+          renderSessions();
+        };
+        scroll.appendChild(b);
+      });
+    });
+  }
+  modal.appendChild(scroll);
+}
+
+function mkPickerBtn(title, sub){
+  var b = document.createElement('div');
+  b.style.cssText = 'width:100%;padding:14px 16px;background:#111118;border:1px solid #1e1e2e;border-radius:12px;margin-bottom:8px;cursor:pointer;color:#f0f0f8;';
+  b.innerHTML = '<div style="font-size:15px;font-weight:600;">' + title + '</div>' + (sub ? '<div style="font-size:11px;color:#444;margin-top:3px;">' + sub + '</div>' : '');
+  return b;
+}
+
+function renderSessions(){
+  var c = document.getElementById('sessionsContainer');
+  c.innerHTML = '';
+  sessions.forEach(function(ses, sIdx){
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#111118;border:1px solid #1e1e2e;border-radius:14px;padding:16px;margin-bottom:10px;';
+
+    var top = document.createElement('div');
+    top.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:12px;';
+    var nameInp = document.createElement('input');
+    nameInp.value = ses.name;
+    nameInp.style.cssText = 'flex:1;background:#0a0a14;border:1px solid #1e1e2e;border-radius:10px;padding:10px;color:#f0f0f8;font-family:inherit;';
+    nameInp.oninput = function(){ renameSession(sIdx, this.value); };
+    var delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.type = 'button';
+    delBtn.style.cssText = 'background:#1a0a0a;border:1px solid #3a1a1a;color:#ef4444;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;';
+    delBtn.onclick = function(){ removeSession(sIdx); };
+    top.appendChild(nameInp); top.appendChild(delBtn);
+    card.appendChild(top);
+
+    ses.exos.forEach(function(exo, eIdx){
+      var er = document.createElement('div');
+      er.style.cssText = 'background:#0a0a14;border-radius:10px;padding:10px;margin-bottom:8px;';
+      var et = document.createElement('div');
+      et.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:8px;';
+      var nm = document.createElement('div');
+      nm.style.cssText = 'font-size:12px;font-weight:700;flex:1;color:#f0f0f8;';
+      nm.textContent = exo.name;
+      var rm = document.createElement('button');
+      rm.textContent = '×'; rm.type = 'button';
+      rm.style.cssText = 'background:none;border:none;color:#444;font-size:16px;cursor:pointer;';
+      rm.onclick = function(){ removeExo(sIdx, eIdx); };
+      et.appendChild(nm); et.appendChild(rm);
+      er.appendChild(et);
+
+      var dr = document.createElement('div');
+      dr.style.cssText = 'display:flex;gap:8px;';
+      [['Séries','sets',exo.sets],['Reps','reps',exo.reps],['Repos(s)','rest',exo.rest]].forEach(function(f){
+        var fd = document.createElement('div');
+        var lb = document.createElement('div');
+        lb.textContent = f[0];
+        lb.style.cssText = 'font-size:10px;color:#444;margin-bottom:4px;';
+        var inp = document.createElement('input');
+        inp.type = 'number'; inp.value = f[2];
+        inp.style.cssText = 'width:60px;background:#111;border:1px solid #1e1e2e;border-radius:8px;padding:8px;color:#f0f0f8;text-align:center;font-family:inherit;';
+        inp.oninput = function(){ updateExo(sIdx, eIdx, f[1], this.value); };
+        fd.appendChild(lb); fd.appendChild(inp);
+        dr.appendChild(fd);
+      });
+      er.appendChild(dr);
+      card.appendChild(er);
+    });
+
+    var addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '+ Ajouter un exercice';
+    addBtn.style.cssText = 'width:100%;padding:10px;background:none;border:1px dashed #1e1e2e;border-radius:10px;color:#444;font-family:inherit;font-size:12px;cursor:pointer;';
+    addBtn.onclick = function(){ openPicker(sIdx); };
+    card.appendChild(addBtn);
+
+    c.appendChild(card);
+  });
+}
+
+document.getElementById('cycForm').addEventListener('submit', function(e){
+  document.getElementById('sessionsJson').value = JSON.stringify(sessions);
+});
+
+addSession();
+</script>
+{% endblock %}

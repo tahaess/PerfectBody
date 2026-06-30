@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lhdr">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:10px;color:var(--blue);letter-spacing:2px;font-weight:700;">{{ ses.name|upper }} · EXO {{ act.exo_idx + 1 }}/{{ ses.exos|length }}</div>
+      <div style="font-size:15px;font-weight:800;margin-top:2px;">{{ exo.name }}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px;">SET {{ act.set_idx + 1 }}/{{ exo.sets }} · Cible {{ exo.reps }} reps · {{ exo.rest }}s repos</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:10px;">
+    {% for i in progress_dots %}
+    <div style="width:28px;height:6px;border-radius:3px;background:{% if i < act.set_idx %}var(--blue){% elif i == act.set_idx %}var(--acc){% else %}var(--bg3){% endif %};"></div>
+    {% endfor %}
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    <a href="{{ url_for('cycle_session_skip') }}" onclick="return confirm('Passer {{ exo.name }} ?')" style="flex:1;padding:8px;background:#0a0f1a;border:1px solid var(--blue);color:var(--blue);border-radius:8px;text-align:center;font-size:11px;font-weight:700;text-decoration:none;">⏭ PASSER CET EXO</a>
+    <a href="{{ url_for('cycle_session_quit') }}" onclick="return confirm('Quitter la séance ?')" style="padding:8px 12px;background:#1a0a0a;border:1px solid #3a1a1a;color:var(--red);border-radius:8px;text-align:center;font-size:11px;font-weight:700;text-decoration:none;">Quitter</a>
+  </div>
+</div>
+
+<div class="scroll" style="padding-top:14px;">
+  {% if last_sets %}
+  <div style="background:#0a0f1a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;">
+    <div style="font-size:10px;color:var(--t3);letter-spacing:2px;margin-bottom:4px;font-weight:700;">DERNIÈRE FOIS</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;">
+      {% for s in last_sets %}
+      <div style="background:#1a1a28;border-radius:6px;padding:3px 9px;font-size:12px;color:#888;">{{ s.reps }}×{{ s.weight }}kg</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('cycle_session_save') }}" id="setForm">
+    <div class="pzone" style="margin-bottom:14px;">
+      <div class="numlbl">REPS</div>
+      <div class="numrow">
+        <button type="button" class="stepbtn minus" onclick="step('reps',-1)">−</button>
+        <input type="number" name="reps" id="repsInput" class="numinp" value="{{ default_reps }}" style="font-size:48px;width:100px;" readonly>
+        <button type="button" class="stepbtn plus" onclick="step('reps',1)">+</button>
+      </div>
+      <div class="numlbl">CHARGE (kg)</div>
+      <div class="numrow">
+        <button type="button" class="stepbtn minus" onclick="step('weight',-1.25)">−</button>
+        <input type="number" step="0.01" name="weight" id="weightInput" class="numinp" value="{{ default_weight }}" style="font-size:48px;width:140px;" readonly>
+        <button type="button" class="stepbtn plus" onclick="step('weight',1.25)">+</button>
+      </div>
+    </div>
+    <button type="submit" class="sbtn rdy">
+      {% if is_last_set and is_last_exo %}TERMINER LA SÉANCE ✓
+      {% elif is_last_set %}EXO SUIVANT ›
+      {% else %}VALIDER SET {{ act.set_idx + 1 }}{% endif %}
+    </button>
+  </form>
+</div>
+
+<script>
+function step(field, delta){
+  var inp = document.getElementById(field === 'reps' ? 'repsInput' : 'weightInput');
+  var val = parseFloat(inp.value) || 0;
+  val = Math.max(0, Math.round((val + delta) * 100) / 100);
+  inp.value = val;
+}
+</script>
+{% endblock %}

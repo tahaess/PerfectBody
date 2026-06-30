@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lhdr">
+  <div class="hdr-row">
+    <a href="{{ url_for('enhancement_home') }}" class="back">←</a>
+    <div>
+      <div style="font-size:10px;color:#555;letter-spacing:3px;font-weight:700;">ENHANCEMENT</div>
+      <div style="font-size:22px;font-weight:900;">Calendrier</div>
+    </div>
+  </div>
+</div>
+<div class="scroll" style="padding-top:16px;">
+  <div class="card" style="border-color:var(--purple);">
+    <div class="sec">PROTOCOLE</div>
+    {% for p in cyc.products %}
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #111;">
+      <div style="font-weight:700;">{{ p.name }}</div>
+      <div style="color:var(--purple);font-weight:700;">{{ p.dose }} {{ p.unit }} <span style="color:var(--t3);font-weight:400;">{{ p.form }}</span></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="sgrid">
+    <div class="sbox"><div class="sv" style="color:var(--purple);">{{ cyc.injections|length }}</div><div class="sl">TOTAL</div></div>
+    <div class="sbox"><div class="sv" style="color:var(--purple);">{{ done_count }}</div><div class="sl">FAITES</div></div>
+    <div class="sbox"><div class="sv" style="color:var(--purple);">{{ cyc.injections|length - done_count }}</div><div class="sl">RESTANTES</div></div>
+  </div>
+
+  <a href="{{ url_for('export_json') }}" class="btn ghost" style="border-color:var(--purple);color:var(--purple);">📤 EXPORTER CALENDRIER (JSON)</a>
+
+  <div class="sec" style="margin-top:8px;">CALENDRIER DES INJECTIONS</div>
+  {% if not injections %}
+    <div style="color:var(--t3);text-align:center;padding:20px 0;">Aucune injection planifiée</div>
+  {% endif %}
+  {% for inj in injections %}
+  <div class="injcard {{ 'done' if inj.done else 'today' if inj.is_today else '' }}">
+    <div>
+      <div style="font-weight:700;font-size:14px;color:{{ 'var(--purple)' if inj.done else 'var(--acc)' if inj.is_today else 'var(--t1)' }};">
+        {% if inj.done %}✓ {% elif inj.is_today %}💉 {% endif %}{{ inj.date_fr }}
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px;">
+        {% for p in inj.products %}{{ p.name }} {{ p.dose }}{{ p.unit }}{% if not loop.last %} + {% endif %}{% endfor %}
+      </div>
+    </div>
+    {% if not inj.done %}
+    <a href="{{ url_for('enh_mark_done', cycle_id=cyc.id, inj_id=inj.id) }}" style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;background:{{ 'var(--purple)' if inj.is_today else 'var(--bg3)' }};color:{{ '#fff' if inj.is_today else 'var(--t2)' }};{{ '' if inj.is_today else 'border:1px solid var(--border);' }}">{{ 'FAIT ✓' if inj.is_today else 'Marquer' }}</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

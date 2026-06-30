@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="scroll pt">
+  <h1>Réglages</h1>
+  <div class="card">
+    <div class="sec">BASE DE DONNÉES</div>
+    <div style="font-size:13px;color:var(--green);font-weight:700;">✓ PostgreSQL connecté</div>
+    <div style="font-size:11px;color:var(--t3);margin-top:4px;">Chaque action est sauvegardée en temps réel côté serveur</div>
+  </div>
+
+  <div class="card">
+    <div class="sec">EXPORT</div>
+    <a href="{{ url_for('export_json') }}" class="btn ghost" style="border-color:var(--green);color:var(--green);margin-bottom:0;">📤 EXPORTER MES DONNÉES (JSON)</a>
+  </div>
+
+  <div class="card">
+    <div class="sec">DONNÉES</div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #111;">
+      <div style="font-size:14px;">Séances</div><div style="color:var(--acc);font-weight:700;">{{ total_sessions }}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;">
+      <div style="font-size:14px;">PRs</div><div style="color:var(--acc);font-weight:700;">{{ total_prs }}</div>
+    </div>
+  </div>
+
+  <a href="{{ url_for('reset_pin') }}" onclick="return confirm('Réinitialiser le PIN Enhancement ?')" class="btn danger">Réinitialiser le PIN Enhancement</a>
+  <a href="{{ url_for('logout') }}" class="btn ghost">Déconnexion</a>
+</div>
+{% endblock %}
