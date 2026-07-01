@@ -1,7 +1,7 @@
 services:
   - type: web
-    name: perfect-body
+    name: ironlog
     runtime: python
-    pythonVersion: "3.11"
+    pythonVersion: "3.11.9"
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app

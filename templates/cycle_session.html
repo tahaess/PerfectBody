@@ -46,7 +46,7 @@
         <button type="button" class="stepbtn plus" onclick="step('weight',1.25)">+</button>
       </div>
     </div>
-    <button type="submit" class="sbtn rdy">
+    <button type="submit" class="sbtn rdy" style="background:linear-gradient(135deg,#e31b1b,#8b0000);letter-spacing:2px;text-shadow:0 0 10px rgba(227,27,27,0.5);box-shadow:0 4px 20px rgba(227,27,27,0.4);">
       {% if is_last_set and is_last_exo %}TERMINER LA SÉANCE ✓
       {% elif is_last_set %}EXO SUIVANT ›
       {% else %}VALIDER SET {{ act.set_idx + 1 }}{% endif %}

@@ -12,8 +12,8 @@
   {% endif %}
 
   {% if active %}
-  <div class="card" style="border-color:var(--blue);background:#080f1a;margin-bottom:16px;">
-    <div style="font-size:10px;color:var(--blue);letter-spacing:3px;margin-bottom:6px;font-weight:700;">CYCLE ACTIF</div>
+  <div class="card" style="border-color:var(--acc);background:#150000;margin-bottom:16px;">
+    <div style="font-size:10px;color:var(--acc);letter-spacing:3px;margin-bottom:6px;font-weight:700;">CYCLE ACTIF</div>
     <div style="font-size:18px;font-weight:900;">{{ active.name }}</div>
     <div style="font-size:12px;color:var(--t3);margin-top:4px;">Démarré le {{ active.start_date_fr }} · {{ active.sessions|length }} séances</div>
     <a href="{{ url_for('cycle_detail', cycle_id=active.id) }}" class="btn blue" style="margin-top:12px;margin-bottom:0;">FAIRE UNE SÉANCE ›</a>
