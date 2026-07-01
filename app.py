@@ -563,10 +563,15 @@ def cycle_start_session(cycle_id, session_id):
     ses = next((s for s in cyc["sessions"] if s["id"] == session_id), None)
     if not ses:
         return redirect(url_for("cycle_detail", cycle_id=cycle_id))
+    # New free-order structure: track each exo independently
     cfg["active_session"] = {
         "cycle_id": cycle_id, "session_id": session_id,
         "session_uid": f"sess-{uuid.uuid4().hex[:10]}",
         "exo_idx": 0, "set_idx": 0, "log": [],
+        "exo_sets_done": {},   # {exo_name: [sets done so far]}
+        "exo_done": [],        # list of completed exo names
+        "current_exo": None,   # exo name being filled right now
+        "current_set": 0,      # set index for current exo
     }
     save_config(cfg)
     return redirect(url_for("cycle_session"))
@@ -581,8 +586,47 @@ def cycle_session():
     cyc = next((c for c in cfg["training_cycles"] if c["id"] == act["cycle_id"]), None)
     ses = next((s for s in cyc["sessions"] if s["id"] == act["session_id"]), None)
 
-    if act["exo_idx"] >= len(ses["exos"]):
-        # Session finished
+    # If an exo is currently being filled → show the set entry screen
+    current_exo_name = act.get("current_exo")
+    if current_exo_name:
+        exo = next((e for e in ses["exos"] if e["name"] == current_exo_name), None)
+        if exo:
+            sets_done = act.get("exo_sets_done", {}).get(current_exo_name, [])
+            current_set = act.get("current_set", 0)
+            is_last_set = current_set >= exo["sets"] - 1
+
+            last_session = get_last_session_for_exercise(exo["name"])
+            last_sets = []
+            default_weight = exo.get("dw", 60)
+            if last_session:
+                last_sets = last_session["sets"] if isinstance(last_session["sets"], list) else json.loads(last_session["sets"])
+                if current_set < len(last_sets):
+                    default_weight = last_sets[current_set]["weight"]
+            if sets_done:
+                default_weight = sets_done[-1]["weight"]
+                default_reps = sets_done[-1]["reps"]
+            else:
+                default_reps = exo["reps"]
+
+            return render_template(
+                "cycle_session.html",
+                ses=ses, exo=exo, act=act,
+                sets_done=sets_done,
+                current_set=current_set,
+                is_last_set=is_last_set,
+                last_sets=last_sets,
+                default_weight=default_weight, default_reps=default_reps,
+                progress_dots=range(exo["sets"]),
+                mode="filling",
+            )
+
+    # Otherwise → show the free-order exo list
+    exo_done = act.get("exo_done", [])
+    exo_sets_done = act.get("exo_sets_done", {})
+    all_done = all(e["name"] in exo_done for e in ses["exos"])
+
+    if all_done:
+        # Session complete
         if "log" not in cyc:
             cyc["log"] = []
         cyc["log"].append({"date": today_str(), "session_name": ses["name"], "sets": act["log"]})
@@ -591,38 +635,28 @@ def cycle_session():
         save_config(cfg)
         return redirect(url_for("cycle_detail", cycle_id=act["cycle_id"]))
 
-    exo = ses["exos"][act["exo_idx"]]
-    is_last_set = act["set_idx"] >= exo["sets"] - 1
-    is_last_exo = act["exo_idx"] >= len(ses["exos"]) - 1
-
-    last_session = get_last_session_for_exercise(exo["name"])
-    last_sets = []
-    default_weight = exo.get("dw", 60)
-    if last_session:
-        last_sets = last_session["sets"] if isinstance(last_session["sets"], list) else json.loads(last_session["sets"])
-        if act["set_idx"] < len(last_sets):
-            default_weight = last_sets[act["set_idx"]]["weight"]
-
-    # If we already logged sets this session for this exo, keep last used weight
-    same_exo_logs = [l for l in act["log"] if l["exo"] == exo["name"]]
-    if same_exo_logs:
-        default_weight = same_exo_logs[-1]["weight"]
-        default_reps = same_exo_logs[-1]["reps"]
-    else:
-        default_reps = exo["reps"]
-
-    weights = [round(i * 1.25, 2) for i in range(0, 241)]
-    reps_range = list(range(1, 21))
-
     return render_template(
         "cycle_session.html",
-        ses=ses, exo=exo, act=act,
-        is_last_set=is_last_set, is_last_exo=is_last_exo,
-        last_sets=last_sets,
-        default_weight=default_weight, default_reps=default_reps,
-        weights=weights, reps_range=reps_range,
-        progress_dots=range(exo["sets"]),
+        ses=ses, act=act,
+        exo_done=exo_done, exo_sets_done=exo_sets_done,
+        mode="list",
     )
+
+
+@app.route("/cycle/session/pick/<path:exo_name>")
+def cycle_session_pick(exo_name):
+    """User picks which exo to do — free order."""
+    cfg = load_config()
+    act = cfg.get("active_session")
+    if not act:
+        return redirect(url_for("cycle_home"))
+    if exo_name in act.get("exo_done", []):
+        return redirect(url_for("cycle_session"))
+    act["current_exo"] = exo_name
+    act["current_set"] = 0
+    cfg["active_session"] = act
+    save_config(cfg)
+    return redirect(url_for("cycle_session"))
 
 
 @app.route("/cycle/session/save", methods=["POST"])
@@ -633,33 +667,38 @@ def cycle_session_save():
         return redirect(url_for("cycle_home"))
     cyc = next((c for c in cfg["training_cycles"] if c["id"] == act["cycle_id"]), None)
     ses = next((s for s in cyc["sessions"] if s["id"] == act["session_id"]), None)
-    exo = ses["exos"][act["exo_idx"]]
+    exo_name = act.get("current_exo")
+    exo = next((e for e in ses["exos"] if e["name"] == exo_name), None)
+    if not exo:
+        return redirect(url_for("cycle_session"))
 
     reps = int(request.form.get("reps", 0))
     weight = float(request.form.get("weight", 0))
-    set_num = act["set_idx"] + 1
+    current_set = act.get("current_set", 0)
+    set_num = current_set + 1
 
-    act["log"].append({"exo": exo["name"], "set": set_num, "reps": reps, "weight": weight})
+    if "exo_sets_done" not in act:
+        act["exo_sets_done"] = {}
+    act["exo_sets_done"].setdefault(exo_name, []).append({"reps": reps, "weight": weight})
+    act["log"].append({"exo": exo_name, "set": set_num, "reps": reps, "weight": weight})
+
     rm = est_1rm(weight, reps)
-    update_pr(exo["name"], rm)
+    update_pr(exo_name, rm)
+    add_set_encours(act["session_uid"], today_str(), ses["name"], exo_name, set_num, reps, weight)
 
-    # Save to encours table immediately (real-time persistence)
-    add_set_encours(act["session_uid"], today_str(), ses["name"], exo["name"], set_num, reps, weight)
-
-    is_last_set = act["set_idx"] >= exo["sets"] - 1
+    is_last_set = current_set >= exo["sets"] - 1
     if is_last_set:
-        # Exercice terminé : on enregistre TOUS ses sets comme une entrée
-        # dans sessions_log (historique consultable + "dernière fois" + stats).
-        exo_sets = [s for s in act["log"] if s["exo"] == exo["name"]]
-        exo_sets_clean = [{"reps": s["reps"], "weight": s["weight"]} for s in exo_sets]
-        exo_rm = max(est_1rm(s["weight"], s["reps"]) for s in exo_sets_clean)
-        exo_vol = round(sum(s["weight"] * s["reps"] for s in exo_sets_clean), 1)
-        save_session_db(today_str(), ses["name"], exo["name"], exo_sets_clean, exo_rm, exo_vol)
-
-        act["set_idx"] = 0
-        act["exo_idx"] += 1
+        sets_clean = act["exo_sets_done"][exo_name]
+        exo_rm = max(est_1rm(s["weight"], s["reps"]) for s in sets_clean)
+        exo_vol = round(sum(s["weight"] * s["reps"] for s in sets_clean), 1)
+        save_session_db(today_str(), ses["name"], exo_name, sets_clean, exo_rm, exo_vol)
+        if "exo_done" not in act:
+            act["exo_done"] = []
+        act["exo_done"].append(exo_name)
+        act["current_exo"] = None
+        act["current_set"] = 0
     else:
-        act["set_idx"] += 1
+        act["current_set"] = current_set + 1
 
     cfg["active_session"] = act
     save_config(cfg)
@@ -668,11 +707,15 @@ def cycle_session_save():
 
 @app.route("/cycle/session/skip")
 def cycle_session_skip():
+    """Skip current exo — mark as done without saving sets."""
     cfg = load_config()
     act = cfg.get("active_session")
-    if act:
-        act["set_idx"] = 0
-        act["exo_idx"] += 1
+    if act and act.get("current_exo"):
+        if "exo_done" not in act:
+            act["exo_done"] = []
+        act["exo_done"].append(act["current_exo"])
+        act["current_exo"] = None
+        act["current_set"] = 0
         cfg["active_session"] = act
         save_config(cfg)
     return redirect(url_for("cycle_session"))
@@ -693,10 +736,11 @@ def cycle_session_quit():
         cyc = next((c for c in cfg["training_cycles"] if c["id"] == act["cycle_id"]), None)
         if cyc:
             ses = next((s for s in cyc["sessions"] if s["id"] == act["session_id"]), None)
-            if ses and act["exo_idx"] < len(ses["exos"]):
-                cur_exo = ses["exos"][act["exo_idx"]]
-                pending_sets = [s for s in act["log"] if s["exo"] == cur_exo["name"]]
-                if pending_sets:
+            if ses and act.get("current_exo"):
+                cur_exo_name = act["current_exo"]
+                cur_exo = next((e for e in ses["exos"] if e["name"] == cur_exo_name), None)
+                pending_sets = act.get("exo_sets_done", {}).get(cur_exo_name, [])
+                if pending_sets and cur_exo:
                     sets_clean = [{"reps": s["reps"], "weight": s["weight"]} for s in pending_sets]
                     rm = max(est_1rm(s["weight"], s["reps"]) for s in sets_clean)
                     vol = round(sum(s["weight"] * s["reps"] for s in sets_clean), 1)

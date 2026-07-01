@@ -10,13 +10,34 @@
   </div>
 </div>
 <div class="scroll" style="padding-top:16px;">
-  <div class="sec">CHOISIR UN EXERCICE</div>
-  {% for exo_name, points in all_exos.items() %}
-  <a href="{{ url_for('cycle_stats', cycle_id=cyc.id, exo=exo_name) }}" class="lbtn" style="flex-direction:column;align-items:flex-start;{% if selected==exo_name %}border-color:var(--acc);background:#120000;{% endif %}">
-    <div style="font-size:14px;font-weight:700;">{{ exo_name }}</div>
+  {% set KEY_EXOS = [
+    'Squat — Barre libre',
+    'Soulevé de terre — Barre conventionnel',
+    'Développé couché — Barre libre',
+    'Développé militaire — Barre libre assis',
+    'Presse — Technogym',
+    'Tirage poitrine — Prise large pronation',
+    'Rowing barre / poulie — Barre pronation',
+  ] %}
+
+  <div class="sec">⚡ EXERCICES CLÉS (FORCE)</div>
+  {% for exo_name in KEY_EXOS %}{% if exo_name in all_exos %}{% set points = all_exos[exo_name] %}
+  <a href="{{ url_for('cycle_stats', cycle_id=cyc.id, exo=exo_name) }}" class="lbtn" style="flex-direction:column;align-items:flex-start;{% if selected==exo_name %}border-color:var(--acc);background:#150000;{% endif %}">
+    <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+      <div style="font-size:15px;font-weight:800;">{{ exo_name }}</div>
+      {% if points %}<div style="font-size:12px;color:var(--acc);font-weight:700;">{{ points|length }} séance{{ 's' if points|length > 1 }}</div>{% endif %}
+    </div>
+    {% if not points %}<div style="font-size:11px;color:var(--t3);margin-top:3px;">Pas encore de données</div>{% endif %}
+  </a>
+  {% endif %}{% endfor %}
+
+  <div class="sec" style="margin-top:16px;">TOUS LES EXERCICES</div>
+  {% for exo_name, points in all_exos.items() %}{% if exo_name not in KEY_EXOS %}
+  <a href="{{ url_for('cycle_stats', cycle_id=cyc.id, exo=exo_name) }}" class="lbtn" style="flex-direction:column;align-items:flex-start;{% if selected==exo_name %}border-color:var(--acc);background:#150000;{% endif %}">
+    <div style="font-size:13px;font-weight:600;">{{ exo_name }}</div>
     <div style="font-size:11px;color:var(--t3);margin-top:3px;">{% if points %}{{ points|length }} séance{{ 's' if points|length > 1 }}{% else %}Pas encore de données{% endif %}</div>
   </a>
-  {% endfor %}
+  {% endif %}{% endfor %}
 
   {% if selected %}
   <div class="card" style="margin-top:8px;border-color:var(--acc);">
